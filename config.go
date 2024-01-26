@@ -93,6 +93,9 @@ type botConfig struct {
 
 	// LegalOperator is the person who can add labels
 	LegalOperator string `json:"legal_operator,omitempty"`
+
+	//NeedsIssues means PR needs to be associated with Issues
+	NeedsIssues bool `json:"needs_issues,omitempty"`
 }
 
 func (c *botConfig) setDefault() {

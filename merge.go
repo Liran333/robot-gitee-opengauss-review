@@ -15,6 +15,7 @@ const (
 	msgMissingLabels      = "PR does not have these lables: %s"
 	msgInvalidLabels      = "PR should remove these labels: %s"
 	msgNotEnoughLGTMLabel = "PR needs %d lgtm labels and now gets %d"
+	msgAssociatedIssues   = "PR needs to be associated with Issues"
 )
 
 var regCheckPr = regexp.MustCompile(`(?mi)^/check-pr\s*$`)
@@ -35,7 +36,7 @@ func (bot *robot) handleCheckPR(e *sdk.NoteEvent, cfg *botConfig) error {
 		return err
 	}
 
-	if r := canMerge(pr.Mergeable, e.GetPRLabelSet(), cfg, ops); len(r) > 0 {
+	if r := canMerge(pr.Mergeable, e.GetPRLabelSet(), cfg, ops, pr); len(r) > 0 {
 		return bot.cli.CreatePRComment(
 			org, repo, e.GetPRNumber(),
 			fmt.Sprintf(
@@ -64,7 +65,7 @@ func (bot *robot) tryMerge(e *sdk.PullRequestEvent, cfg *botConfig) error {
 		return err
 	}
 
-	if r := canMerge(pr.GetMergeable(), e.GetPRLabelSet(), cfg, ops); len(r) > 0 {
+	if r := canMerge(pr.GetMergeable(), e.GetPRLabelSet(), cfg, ops, pr); len(r) > 0 {
 		return nil
 	}
 
@@ -94,9 +95,13 @@ func (bot *robot) mergePR(needReviewOrTest bool, org, repo string, number int32,
 	)
 }
 
-func canMerge(mergeable bool, labels sets.String, cfg *botConfig, ops []sdk.OperateLog) []string {
+func canMerge(mergeable bool, labels sets.String, cfg *botConfig, ops []sdk.OperateLog, pr *sdk.PullRequestHook) []string {
 	if !mergeable {
 		return []string{msgPRConflicts}
+	}
+
+	if cfg.NeedsIssues && len(pr.Issues) == 0 {
+		return []string{msgAssociatedIssues}
 	}
 
 	reasons := []string{}
